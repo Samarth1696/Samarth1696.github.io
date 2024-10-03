@@ -67,6 +67,7 @@
         maxPitch: 85
     }));
 
+    var currentroll = 0;
     // Custom controls
     class BearingControl {
         onAdd(map) {
@@ -228,6 +229,19 @@
     case 'w':
       map.startMovingForward();
       break;
+    case 'd':
+      map.setBearing(map.getBearing() + 5); // Rotate left
+      map.setRoll(map.getRoll() + 0.5); // Roll left
+      map.setPitch(map.getPitch() - 0.25); // Roll left
+      break;
+    case 'a':
+      map.setBearing(map.getBearing() - 5); // Rotate left
+      map.setRoll(map.getRoll() - 0.5); // Roll left
+      map.setPitch(map.getPitch() - 0.25); // Roll left
+      break;
+    case 's':
+      map.setPitch(map.getPitch() + 0.25); // Roll left
+      break;
     // Add cases for other keys as needed
   }
 });
@@ -236,6 +250,8 @@ window.addEventListener('keyup', (event) => {
   switch (event.key) {
     case 'w':
       map.stopMovingForward();
+      break;
+    case 'd':
       break;
     // Add cases for other keys as needed
   }
