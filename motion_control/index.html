@@ -13,8 +13,32 @@
     </style>
 </head>
 <body>
-<div id="map"></div>
+<div id="map">
+    <div id="key-display" style="position: fixed; top: 10px; left: 10px; background-color: rgba(0, 0, 0, 0.25); padding: 5px; border-radius: 5px; z-index: 1000;">
+  <div>
+    <button id="key-q" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">Q</button>
+    <button id="key-w" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">W</button>
+    <button id="key-e" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">E</button>
+  </div>
+  <div>
+    <button id="key-a" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">A</button>
+    <button id="key-s" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">S</button>
+    <button id="key-d" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">D</button>
+  </div>
+</div>
+</div>
 <script>
+    const keys = ['q', 'w', 'e', 'a', 's', 'd'];
+const keyElements = keys.reduce((acc, key) => {
+  acc[key] = document.getElementById(`key-${key}`);
+  return acc;
+}, {});
+
+    function setKeyState(key, isPressed) {
+  if (keyElements[key]) {
+    keyElements[key].style.backgroundColor = isPressed ? 'green' : null;
+  }
+}
     const map = (window.map = new maplibregl.Map({
         container: 'map',
         zoom: 12,
@@ -67,179 +91,30 @@
         maxPitch: 85
     }));
 
-    var currentroll = 0;
-    // Custom controls
-    class BearingControl {
-        onAdd(map) {
-            this._map = map;
-            this._container = document.createElement('div');
-            this._container.className = 'maplibregl-ctrl';
-            let bearing_label = document.createElement('span');
-            bearing_label.innerHTML = "bearing = ";
-            let bearing_value = document.createElement('span');
-            bearing_value.innerHTML = map.getBearing().toFixed(2);
-            let bearing_down = document.createElement('button');
-            bearing_down.innerHTML = "-";
-            bearing_down.onclick = (e) => {
-                this._map.easeTo({ bearing: this._map.getBearing() - 5 });
-                bearing_value.innerHTML = this._map.getBearing().toFixed(2);
-            };
-            let bearing_up = document.createElement('button');
-            bearing_up.innerHTML = "+";
-            bearing_up.onclick = (e) => {
-                this._map.easeTo({ bearing: this._map.getBearing() + 5 });
-                bearing_value.innerHTML = this._map.getBearing().toFixed(2);
-            };
-            this._container.appendChild(bearing_label);
-            this._container.appendChild(bearing_value);
-            this._container.appendChild(bearing_down);
-            this._container.appendChild(bearing_up);
-            return this._container;
-        }
-
-        onRemove() {
-            this._container.parentNode.removeChild(this._container);
-            this._map = undefined;
-        }
-    }
-
-    class PitchControl {
-        onAdd(map) {
-            this._map = map;
-            this._container = document.createElement('div');
-            this._container.className = 'maplibregl-ctrl';
-            let pitch_label = document.createElement('span');
-            pitch_label.innerHTML = "pitch = ";
-            let pitch_value = document.createElement('span');
-            pitch_value.innerHTML = map.getPitch().toFixed(2);
-            let pitch_down = document.createElement('button');
-            pitch_down.innerHTML = "-";
-            pitch_down.onclick = (e) => {
-                this._map.easeTo({ pitch: this._map.getPitch() - 5 });
-                pitch_value.innerHTML = this._map.getPitch().toFixed(2);
-            };
-            let pitch_up = document.createElement('button');
-            pitch_up.innerHTML = "+";
-            pitch_up.onclick = (e) => {
-                this._map.easeTo({ pitch: this._map.getPitch() + 5 });
-                pitch_value.innerHTML = this._map.getPitch().toFixed(2);
-            };
-            this._container.appendChild(pitch_label);
-            this._container.appendChild(pitch_value);
-            this._container.appendChild(pitch_down);
-            this._container.appendChild(pitch_up);
-            return this._container;
-        }
-
-        onRemove() {
-            this._container.parentNode.removeChild(this._container);
-            this._map = undefined;
-        }
-    }
-
-    class RollControl {
-        onAdd(map) {
-            this._map = map;
-            this._container = document.createElement('div');
-            this._container.className = 'maplibregl-ctrl';
-            let roll_label = document.createElement('span');
-            roll_label.innerHTML = "roll = ";
-            let roll_value = document.createElement('span');
-            roll_value.innerHTML = map.getRoll().toFixed(2);
-            let roll_down = document.createElement('button');
-            roll_down.innerHTML = "-";
-            roll_down.onclick = (e) => {
-                this._map.easeTo({ roll: this._map.getRoll() - 5 });
-                roll_value.innerHTML = this._map.getRoll().toFixed(2);
-            };
-            let roll_up = document.createElement('button');
-            roll_up.innerHTML = "+";
-            roll_up.onclick = (e) => {
-                this._map.easeTo({ roll: this._map.getRoll() + 5 });
-                roll_value.innerHTML = this._map.getRoll().toFixed(2);
-            };
-            this._container.appendChild(roll_label);
-            this._container.appendChild(roll_value);
-            this._container.appendChild(roll_down);
-            this._container.appendChild(roll_up);
-            return this._container;
-        }
-
-        onRemove() {
-            this._container.parentNode.removeChild(this._container);
-            this._map = undefined;
-        }
-    }
-
-    class SingularPointControl {
-        onAdd(map) {
-            this._map = map;
-            this._container = document.createElement('div');
-            this._container.className = 'maplibregl-ctrl';
-
-            let p1 = document.createElement('button');
-            p1.innerHTML = "(-89.9, -89.9)";
-            p1.onclick = (e) => {
-                this._map.easeTo({ pitch: 8, roll: -89.9, bearing: -89.9 });
-            };
-
-            let p2 = document.createElement('button');
-            p2.innerHTML = "(89.9, 89.9)";
-            p2.onclick = (e) => {
-                this._map.easeTo({ pitch: 8, roll: 89.9, bearing: 89.9 });
-            };
-
-            let p3 = document.createElement('button');
-            p3.innerHTML = "(-89.9, -90.1)";
-            p3.onclick = (e) => {
-                this._map.easeTo({ pitch: 8, roll: -89.9, bearing: -90.1 });
-            };
-
-            let p4 = document.createElement('button');
-            p4.innerHTML = "(89.9, 90.1)";
-            p4.onclick = (e) => {
-                this._map.easeTo({ pitch: 8, roll: 89.9, bearing: 90.1 });
-            };
-
-            let s = document.createElement('span');
-            s.innerHTML = '<br>';
-
-            this._container.appendChild(p1);
-            this._container.appendChild(p2);
-            this._container.appendChild(s);
-            this._container.appendChild(p3);
-            this._container.appendChild(p4);
-            return this._container;
-        }
-
-        onRemove() {
-            this._container.parentNode.removeChild(this._container);
-            this._map = undefined;
-        }
-    }
-
-    // Add custom controls to the map
-    map.addControl(new BearingControl());
-    map.addControl(new PitchControl());
-    map.addControl(new RollControl());
-    map.addControl(new SingularPointControl());
-
     window.addEventListener('keydown', (event) => {
+    console.log(Math.sqrt(Math.pow(map._currentLinearSpeed, 2) + Math.pow(map._currentLateralSpeed, 2)));
   switch (event.key) {
-    case 'ArrowUp':
-      map.startMovingUp();
+    case 'q':
+      setKeyState(event.key, true); 
+      break;
+    case 'e':
+      setKeyState(event.key, true); 
       break;
     case 'w':
+      setKeyState(event.key, true); 
       map.startMovingForward();
       break;
     case 'd':
+      setKeyState(event.key, true); 
       map.startMovingRight();
       break;
     case 'a':
+      setKeyState(event.key, true); 
       map.startMovingLeft();
       break;
     case 's':
-      map.startMovingDown();
+      setKeyState(event.key, true); 
+      map.startMovingBackward();
       break;
     // Add cases for other keys as needed
   }
@@ -247,17 +122,27 @@
 
 window.addEventListener('keyup', (event) => {
   switch (event.key) {
+    case 'q':
+      setKeyState(event.key, false); 
+      break;
+    case 'e':
+      setKeyState(event.key, false); 
+      break;
     case 'w':
+      setKeyState(event.key, false); 
       map.stopMovingForward();
       break;
     case 'd':
+      setKeyState(event.key, false); 
       map.stopMovingRight();
       break;
     case 'a':
+      setKeyState(event.key, false); 
       map.stopMovingLeft();
       break;
     case 's':
-      map.stopMovingDown();
+      setKeyState(event.key, false); 
+      map.stopMovingBackward();
       break;
     // Add cases for other keys as needed
   }
