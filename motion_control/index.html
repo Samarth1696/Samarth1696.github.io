@@ -43,7 +43,7 @@ const keyElements = keys.reduce((acc, key) => {
         container: 'map',
         zoom: 12,
         center: [11.39085, 47.27574],
-        pitch: 70,
+        pitch: 85,
         hash: true,
         style: {
             version: 8,
@@ -81,10 +81,6 @@ const keyElements = keys.reduce((acc, key) => {
                     paint: { 'hillshade-shadow-color': '#473B24' }
                 }
             ],
-            terrain: {
-                source: 'terrainSource',
-                exaggeration: 1
-            },
             sky: {}
         },
         maxZoom: 18,
@@ -167,4 +163,5 @@ window.addEventListener('keyup', (event) => {
 </script>
 </body>
 </html>
+
 
