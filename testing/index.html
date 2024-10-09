@@ -90,14 +90,12 @@ const keyElements = keys.reduce((acc, key) => {
                     paint: { 'hillshade-shadow-color': '#473B24' }
                 }
             ],
-            fog: null,
             sky: {}
         },
         maxZoom: 18,
         maxPitch: 85
     }));
 
-    setInterval(map._startMotion, 100);
     map.keyboard.disable();
 
     window.addEventListener('keydown', (event) => {
@@ -130,7 +128,6 @@ const keyElements = keys.reduce((acc, key) => {
       map.increaseAileron();
       setKeyState(event.key, true); 
       break;
-    // Add cases for other keys as needed
   }
 });
 
@@ -154,7 +151,6 @@ window.addEventListener('keyup', (event) => {
     case 'd':
       setKeyState(event.key, false); 
       break;
-    // Add cases for other keys as needed
   }
 });
 
