@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Motion Control</title>
     <meta property="og:description" content="Motion Control for immersive 3D" />
@@ -8,160 +9,220 @@
     <link rel='stylesheet' href='./maplibre-gl.css' />
     <script src='./maplibre-gl.js'></script>
     <style>
-        body { margin: 0; padding: 0; }
-        html, body, #map { height: 100%; }
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body,
+        #map {
+            height: 100%;
+        }
+
+        #flight-data {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-family: monospace;
+        }
+
+        .data-row {
+            margin: 5px 0;
+        }
     </style>
 </head>
+
 <body>
-<div id="map">
-    <div id="key-display" style="position: fixed; top: 10px; left: 10px; background-color: rgba(0, 0, 0, 0.25); padding: 5px; border-radius: 5px; z-index: 1000;">
-  <div>
-    <button id="key-q" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">Q</button>
-    <button id="key-w" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">W</button>
-    <button id="key-e" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">E</button>
-  </div>
-  <div>
-    <button id="key-a" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">A</button>
-    <button id="key-s" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">S</button>
-    <button id="key-d" style="width: 50px; height: 50px; margin: 2px; border: none; border-radius: 3px;">D</button>
-  </div>
-</div>
-</div>
-<script>
-    const keys = ['q', 'w', 'e', 'a', 's', 'd'];
-const keyElements = keys.reduce((acc, key) => {
-  acc[key] = document.getElementById(`key-${key}`);
-  return acc;
-}, {});
+    <div id="map">
+        <div id="flight-data">
+            <div class="data-row">Lat: <span id="lat">0.000</span>° Lng: <span id="lng">0.000</span>°</div>
+            <div class="data-row">Alt: <span id="alt">0</span>m Speed: <span id="speed">0</span>m/s</div>
+            <div class="data-row">Hdg: <span id="heading">0</span>° Pitch: <span id="pitch">0</span>° Roll: <span
+                    id="roll">0</span>°</div>
+            <div class="data-row">V/S: <span id="vspeed">0</span>m/s Track: <span id="track">0</span>°</div>
+            <div class="data-row">Update Status: <span id="status" style="color: green">Running</span></div>
+        </div>
+    </div>
 
-    function setKeyState(key, isPressed) {
-  if (keyElements[key]) {
-    keyElements[key].style.backgroundColor = isPressed ? 'green' : null;
-  }
-}
-    const map = (window.map = new maplibregl.Map({
-        container: 'map',
-        zoom: 12,
-        center: [11.39085, 47.27574],
-        pitch: 85,
-        hash: true,
-        style: {
-            version: 8,
-            sources: {
-                osm: {
-                    type: 'raster',
-                    tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                    tileSize: 256,
-                    attribution: '&copy; OpenStreetMap Contributors',
-                    maxzoom: 19
+    <script>
+        const map = (window.map = new maplibregl.Map({
+            container: 'map',
+            zoom: 13,
+            center: [11.39085, 47.27574],
+            pitch: 70,
+            style: {
+                version: 8,
+                sources: {
+                    osm: {
+                        type: 'raster',
+                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap Contributors',
+                        maxzoom: 19
+                    },
+                    // Use a different source for terrain and hillshade layers, to improve render quality
+                    terrainSource: {
+                        type: 'raster-dem',
+                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                        tileSize: 256
+                    },
+                    hillshadeSource: {
+                        type: 'raster-dem',
+                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                        tileSize: 256
+                    }
                 },
-                // Use a different source for terrain and hillshade layers, to improve render quality
-                terrainSource: {
-                    type: 'raster-dem',
-                    url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-                    tileSize: 256
-                },
-                hillshadeSource: {
-                    type: 'raster-dem',
-                    url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-                    tileSize: 256
-                }
+                layers: [
+                    {
+                        id: 'osm',
+                        type: 'raster',
+                        source: 'osm'
+                    },
+                    {
+                        id: 'hills',
+                        type: 'hillshade',
+                        source: 'hillshadeSource',
+                        layout: {visibility: 'visible'},
+                        paint: {'hillshade-shadow-color': '#473B24'}
+                    }
+                ],
+                sky: {}
             },
-            layers: [
-                {
-                    id: 'osm',
-                    type: 'raster',
-                    source: 'osm'
-                },
-                {
-                    id: 'hills',
-                    type: 'hillshade',
-                    source: 'hillshadeSource',
-                    layout: { visibility: 'visible' },
-                    paint: { 'hillshade-shadow-color': '#473B24' }
-                }
-            ],
-            sky: {}
-        },
-        maxZoom: 18,
-        maxPitch: 85
-    }));
+            maxPitch: 180,
+            centerClampedToGround: false
+        }));
 
-    window.addEventListener('keydown', (event) => {
-    console.log(Math.sqrt(Math.pow(map._currentLinearSpeed, 2) + Math.pow(map._currentLateralSpeed, 2)));
-  switch (event.key) {
-    case 'q':
-      setKeyState(event.key, true); 
-      break;
-    case 'e':
-      setKeyState(event.key, true); 
-      break;
-    case 'w':
-      setKeyState(event.key, true); 
-      map.startMovingForward();
-      break;
-    case 'd':
-      setKeyState(event.key, true); 
-      map.startMovingRight();
-      break;
-    case 'a':
-      setKeyState(event.key, true); 
-      map.startMovingLeft();
-      break;
-    case 's':
-      setKeyState(event.key, true); 
-      map.startMovingBackward();
-      break;
-    // Add cases for other keys as needed
-  }
-});
+        map.keyboard.disable(); // Disable default keyboard controls
+        // Add built-in controls
+        map.addControl(
+            new maplibregl.NavigationControl({
+                visualizePitch: true,
+                showZoom: true,
+                showCompass: true
+            })
+        );
 
-window.addEventListener('keyup', (event) => {
-  switch (event.key) {
-    case 'q':
-      setKeyState(event.key, false); 
-      break;
-    case 'e':
-      setKeyState(event.key, false); 
-      break;
-    case 'w':
-      setKeyState(event.key, false); 
-      map.stopMovingForward();
-      break;
-    case 'd':
-      setKeyState(event.key, false); 
-      map.stopMovingRight();
-      break;
-    case 'a':
-      setKeyState(event.key, false); 
-      map.stopMovingLeft();
-      break;
-    case 's':
-      setKeyState(event.key, false); 
-      map.stopMovingBackward();
-      break;
-    // Add cases for other keys as needed
-  }
-});
+        map.addControl(
+            new maplibregl.TerrainControl({
+                source: 'terrainSource',
+                exaggeration: 1
+            })
+        );
 
-    // Add built-in controls
-    map.addControl(
-        new maplibregl.NavigationControl({
-            visualizePitch: true,
-            showZoom: true,
-            showCompass: true
-        })
-    );
+        // Initialize aircraft control
+        const aircraftControl = new maplibregl.AircraftMotionControl({
+            initialPosition: {
+                lat: 47.27574,
+                lng: 11.39085,
+                altitude: 10000
+            },
+            cameraMode: {type: 'COCKPIT'}
+        });
 
-    map.addControl(
-        new maplibregl.TerrainControl({
-            source: 'terrainSource',
-            exaggeration: 1
-        })
-    );
+        map.addControl(aircraftControl);
 
-</script>
+        // Fixed parameters
+        const FIXED_ALTITUDE = 2000;
+        const FIXED_SPEED = 50;
+        const FIXED_PITCH = 90;
+        const FIXED_VERTICAL_SPEED = 0;
+
+        // Motion parameters
+        let time = 0;
+        const radius = 0.01;
+        let isRunning = true;
+        const STOP_TIME = 9000; // stop after 9 seconds
+
+        // Main update loop
+        function updateAircraftState() {
+            if (!isRunning) {
+                const center = map.getCenter();
+                document.getElementById('lat').textContent = center.lat.toFixed(4);
+                document.getElementById('lng').textContent = center.lng.toFixed(4);
+                document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
+                document.getElementById('speed').textContent = FIXED_SPEED;
+                document.getElementById('heading').textContent = map.getBearing().toFixed(0);
+                document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
+                document.getElementById('roll').textContent = map.getRoll().toFixed(0);
+                document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
+                document.getElementById('track').textContent = map.getBearing().toFixed(0);
+                return;
+            }
+
+            time += 0.01;
+
+            // Calculate new position (circular path)
+            const lat = 47.27574 + radius * Math.cos(time);
+            const lng = 11.39085 + radius * Math.sin(time);
+
+            // Calculate heading based on motion
+            const heading = (time * 180 / Math.PI) % 360;
+
+            // Calculate roll (banking in turns)
+            const roll = Math.sin(time) * 30;
+
+            // Update the aircraft state
+            aircraftControl.updateAircraftState({
+                lat: lat,
+                lng: lng,
+                elevation: FIXED_ALTITUDE,
+                groundTrack: heading,
+                aircraftHeading: heading,
+                groundSpeed: FIXED_SPEED,
+                verticalSpeed: FIXED_VERTICAL_SPEED,
+                pitchAttitude: FIXED_PITCH,
+                rollAttitude: roll
+            });
+
+            // Update display
+            const center = map.getCenter();
+            document.getElementById('lat').textContent = center.lat.toFixed(4);
+            document.getElementById('lng').textContent = center.lng.toFixed(4);
+            document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
+            document.getElementById('speed').textContent = FIXED_SPEED;
+            document.getElementById('heading').textContent = map.getBearing().toFixed(0);
+            document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
+            document.getElementById('roll').textContent = map.getRoll().toFixed(0);
+            document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
+            document.getElementById('track').textContent = map.getBearing().toFixed(0);
+        }
+
+        // Camera mode controls
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case '1': aircraftControl.setCameraMode({type: 'COCKPIT'}); break;
+                case '2': aircraftControl.setCameraMode({
+                    type: 'CHASE',
+                    offset: {x: 0, y: -50, z: 15}
+                }); break;
+                case '3': aircraftControl.setCameraMode({type: 'ORBIT'}); break;
+                case '4': aircraftControl.setCameraMode({type: 'FREE'}); break;
+                // Add key to restart updates
+                case 'r':
+                    isRunning = true;
+                    document.getElementById('status').textContent = 'Running';
+                    document.getElementById('status').style.color = 'green';
+                    break;
+            }
+        });
+
+        // Start update loop
+        const updateInterval = setInterval(updateAircraftState, 16);
+
+        // Stop updates after STOP_TIME
+        setTimeout(() => {
+            isRunning = false;
+            document.getElementById('status').textContent = 'Stopped';
+            document.getElementById('status').style.color = 'red';
+            console.log('Aircraft state updates stopped');
+        }, STOP_TIME);
+    </script>
 </body>
+
 </html>
-
-
