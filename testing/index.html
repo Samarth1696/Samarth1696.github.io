@@ -46,7 +46,6 @@
             <div class="data-row">Hdg: <span id="heading">0</span>° Pitch: <span id="pitch">0</span>° Roll: <span
                     id="roll">0</span>°</div>
             <div class="data-row">V/S: <span id="vspeed">0</span>m/s Track: <span id="track">0</span>°</div>
-            <div class="data-row">Update Status: <span id="status" style="color: green">Running</span></div>
         </div>
     </div>
 
@@ -98,8 +97,8 @@
             centerClampedToGround: false
         }));
 
-        map.keyboard.disable(); // Disable default keyboard controls
-        // Add built-in controls
+        map.keyboard.disable(); 
+
         map.addControl(
             new maplibregl.NavigationControl({
                 visualizePitch: true,
@@ -115,113 +114,39 @@
             })
         );
 
-        // Initialize aircraft control
         const aircraftControl = new maplibregl.AircraftMotionControl({
             initialPosition: {
                 lat: 47.27574,
                 lng: 11.39085,
-                altitude: 10000
+                altitude: 2000
             },
-            cameraMode: {type: 'COCKPIT'}
+            initialVelocity: {
+                groundSpeed: 500,
+                verticalSpeed: 100,
+            },
+            initialAttitude: {
+                heading: 0,
+                pitch: 85,
+                roll: 0
+            }
         });
 
         map.addControl(aircraftControl);
 
-        // Fixed parameters
-        const FIXED_ALTITUDE = 2000;
-        const FIXED_SPEED = 50;
-        const FIXED_PITCH = 90;
-        const FIXED_VERTICAL_SPEED = 0;
-
-        // Motion parameters
-        let time = 0;
-        const radius = 0.01;
-        let isRunning = true;
-        const STOP_TIME = 9000; // stop after 9 seconds
-
-        // Main update loop
-        function updateAircraftState() {
-            if (!isRunning) {
-                const center = map.getCenter();
-                document.getElementById('lat').textContent = center.lat.toFixed(4);
-                document.getElementById('lng').textContent = center.lng.toFixed(4);
-                document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
-                document.getElementById('speed').textContent = FIXED_SPEED;
-                document.getElementById('heading').textContent = map.getBearing().toFixed(0);
-                document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
-                document.getElementById('roll').textContent = map.getRoll().toFixed(0);
-                document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
-                document.getElementById('track').textContent = map.getBearing().toFixed(0);
-                return;
-            }
-
-            time += 0.01;
-
-            // Calculate new position (circular path)
-            const lat = 47.27574 + radius * Math.cos(time);
-            const lng = 11.39085 + radius * Math.sin(time);
-
-            // Calculate heading based on motion
-            const heading = (time * 180 / Math.PI) % 360;
-
-            // Calculate roll (banking in turns)
-            const roll = Math.sin(time) * 30;
-
-            // Update the aircraft state
-            aircraftControl.updateAircraftState({
-                lat: lat,
-                lng: lng,
-                elevation: FIXED_ALTITUDE,
-                groundTrack: heading,
-                aircraftHeading: heading,
-                groundSpeed: FIXED_SPEED,
-                verticalSpeed: FIXED_VERTICAL_SPEED,
-                pitchAttitude: FIXED_PITCH,
-                rollAttitude: roll
-            });
-
-            // Update display
+        function update() {
             const center = map.getCenter();
             document.getElementById('lat').textContent = center.lat.toFixed(4);
             document.getElementById('lng').textContent = center.lng.toFixed(4);
             document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
-            document.getElementById('speed').textContent = FIXED_SPEED;
-            document.getElementById('heading').textContent = map.getBearing().toFixed(0);
-            document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
+            document.getElementById('speed').textContent = 500;
+            document.getElementById('heading').textContent = map.getBearing();
+            document.getElementById('pitch').textContent = map.getPitch().toFixed(0);
             document.getElementById('roll').textContent = map.getRoll().toFixed(0);
-            document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
+            document.getElementById('vspeed').textContent = 100;
             document.getElementById('track').textContent = map.getBearing().toFixed(0);
         }
 
-        // Camera mode controls
-        document.addEventListener('keydown', (e) => {
-            switch (e.key) {
-                case '1': aircraftControl.setCameraMode({type: 'COCKPIT'}); break;
-                case '2': aircraftControl.setCameraMode({
-                    type: 'CHASE',
-                    offset: {x: 0, y: -50, z: 15}
-                }); break;
-                case '3': aircraftControl.setCameraMode({type: 'ORBIT'}); break;
-                case '4': aircraftControl.setCameraMode({type: 'FREE'}); break;
-                // Add key to restart updates
-                case 'r':
-                    isRunning = true;
-                    document.getElementById('status').textContent = 'Running';
-                    document.getElementById('status').style.color = 'green';
-                    break;
-            }
-        });
-
-        // Start update loop
-        const updateInterval = setInterval(updateAircraftState, 16);
-
-        // Stop updates after STOP_TIME
-        setTimeout(() => {
-            isRunning = false;
-            document.getElementById('status').textContent = 'Stopped';
-            document.getElementById('status').style.color = 'red';
-            console.log('Aircraft state updates stopped');
-        }, STOP_TIME);
+        setInterval(update, 1000);
     </script>
 </body>
 
