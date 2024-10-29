@@ -95,6 +95,7 @@
                 sky: {}
             },
             maxPitch: 180,
+            centerClampedToGround: false
         }));
 
         map.keyboard.disable(); // Disable default keyboard controls
@@ -136,7 +137,7 @@
         let time = 0;
         const radius = 0.01;
         let isRunning = true;
-        const STOP_TIME = 3000; // Stop after 3 seconds
+        const STOP_TIME = 9000; // stop after 9 seconds
 
         // Main update loop
         function updateAircraftState() {
