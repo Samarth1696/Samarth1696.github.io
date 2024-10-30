@@ -45,7 +45,6 @@
             <div class="data-row">Alt: <span id="alt">0</span>m Speed: <span id="speed">0</span>m/s</div>
             <div class="data-row">Hdg: <span id="heading">0</span>° Pitch: <span id="pitch">0</span>° Roll: <span
                     id="roll">0</span>°</div>
-            <div class="data-row">V/S: <span id="vspeed">0</span>m/s Track: <span id="track">0</span>°</div>
             <div class="data-row">Update Status: <span id="status" style="color: green">Running</span></div>
         </div>
     </div>
@@ -151,7 +150,6 @@
                 document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
                 document.getElementById('roll').textContent = map.getRoll().toFixed(0);
                 document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
-                document.getElementById('track').textContent = map.getBearing().toFixed(0);
                 return;
             }
 
@@ -172,7 +170,6 @@
                 lat: lat,
                 lng: lng,
                 elevation: FIXED_ALTITUDE,
-                groundTrack: heading,
                 aircraftHeading: heading,
                 groundSpeed: FIXED_SPEED,
                 verticalSpeed: FIXED_VERTICAL_SPEED,
@@ -190,7 +187,6 @@
             document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
             document.getElementById('roll').textContent = map.getRoll().toFixed(0);
             document.getElementById('vspeed').textContent = FIXED_VERTICAL_SPEED;
-            document.getElementById('track').textContent = map.getBearing().toFixed(0);
         }
 
         // Camera mode controls
