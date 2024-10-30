@@ -119,7 +119,7 @@
             initialPosition: {
                 lat: 47.27574,
                 lng: 11.39085,
-                altitude: 10000
+                altitude: 2000
             },
             cameraMode: {type: 'COCKPIT'}
         });
@@ -144,7 +144,7 @@
                 const center = map.getCenter();
                 document.getElementById('lat').textContent = center.lat.toFixed(4);
                 document.getElementById('lng').textContent = center.lng.toFixed(4);
-                document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
+                document.getElementById('alt').textContent = map.transform.getCameraAltitude().toFixed(0);
                 document.getElementById('speed').textContent = FIXED_SPEED;
                 document.getElementById('heading').textContent = map.getBearing().toFixed(0);
                 document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
@@ -181,7 +181,7 @@
             const center = map.getCenter();
             document.getElementById('lat').textContent = center.lat.toFixed(4);
             document.getElementById('lng').textContent = center.lng.toFixed(4);
-            document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
+            document.getElementById('alt').textContent = map.transform.getCameraAltitude().toFixed(0);
             document.getElementById('speed').textContent = FIXED_SPEED;
             document.getElementById('heading').textContent = map.getBearing().toFixed(0);
             document.getElementById('pitch').textContent = map.getPitch().toFixed(0);;
