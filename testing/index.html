@@ -2,8 +2,8 @@
 <html lang="en">
 
 <head>
-    <title>Motion Control</title>
-    <meta property="og:description" content="Motion Control for immersive 3D" />
+    <title>3D Terrain</title>
+    <meta property="og:description" content="Go beyond hillshade and show elevation in actual 3D." />
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='./maplibre-gl.css' />
@@ -19,42 +19,18 @@
         #map {
             height: 100%;
         }
-
-        #flight-data {
-            position: fixed;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1000;
-            font-family: monospace;
-        }
-
-        .data-row {
-            margin: 5px 0;
-        }
     </style>
 </head>
 
 <body>
-    <div id="map">
-        <div id="flight-data">
-            <div class="data-row">Lat: <span id="lat">0.000</span>° Lng: <span id="lng">0.000</span>°</div>
-            <div class="data-row">Alt: <span id="alt">0</span>m Speed: <span id="speed">0</span>m/s</div>
-            <div class="data-row">Hdg: <span id="heading">0</span>° Pitch: <span id="pitch">0</span>° Roll: <span
-                    id="roll">0</span>°</div>
-            <div class="data-row">V/S: <span id="vspeed">0</span>m/s Track: <span id="track">0</span>°</div>
-        </div>
-    </div>
-
+    <div id="map"></div>
     <script>
         const map = (window.map = new maplibregl.Map({
             container: 'map',
-            zoom: 13,
+            zoom: 12,
             center: [11.39085, 47.27574],
             pitch: 70,
+            hash: true,
             style: {
                 version: 8,
                 sources: {
@@ -93,11 +69,9 @@
                 ],
                 sky: {}
             },
-            maxPitch: 180,
-            centerClampedToGround: false
+            maxZoom: 18,
+            maxPitch: 180
         }));
-
-        map.keyboard.disable(); 
 
         map.addControl(
             new maplibregl.NavigationControl({
@@ -107,47 +81,32 @@
             })
         );
 
-        map.addControl(
-            new maplibregl.TerrainControl({
-                source: 'terrainSource',
-                exaggeration: 1
-            })
-        );
+        let currentLat = 47.27574;
+        let currentLng = 11.39085;
 
-        const aircraftControl = new maplibregl.AircraftMotionControl({
-            initialPosition: {
-                lat: 47.27574,
-                lng: 11.39085,
-                altitude: 2000
-            },
-            initialVelocity: {
-                groundSpeed: 500,
-                verticalSpeed: 100,
-            },
-            initialAttitude: {
-                heading: 0,
-                pitch: 85,
-                roll: 0
-            }
-        });
+        function updateCamera() {
+            currentLat += 0.0001;
 
-        map.addControl(aircraftControl);
+            const cameraLngLat = new maplibregl.LngLat(currentLng, currentLat);
+            const cameraAltitude = 400;
+            const bearing = 0;
+            const pitch = 85;
+            const roll = 0;
 
-        function update() {
-            const center = map.getCenter();
-            document.getElementById('lat').textContent = center.lat.toFixed(4);
-            document.getElementById('lng').textContent = center.lng.toFixed(4);
-            document.getElementById('alt').textContent = map.transform.elevation.toFixed(0);
-            document.getElementById('speed').textContent = 500;
-            document.getElementById('heading').textContent = map.getBearing();
-            document.getElementById('pitch').textContent = map.getPitch().toFixed(0);
-            document.getElementById('roll').textContent = map.getRoll().toFixed(0);
-            document.getElementById('vspeed').textContent = 100;
-            document.getElementById('track').textContent = map.getBearing().toFixed(0);
+            const cameraOptions = map.calculateCameraOptionsFromCameraLngLatAltRotation(
+                cameraLngLat,
+                cameraAltitude,
+                bearing,
+                pitch,
+                roll
+            );
+
+            map.jumpTo(cameraOptions);
         }
 
-        setInterval(update, 1000);
+        setInterval(updateCamera, 16);
     </script>
 </body>
 
 </html>
+
