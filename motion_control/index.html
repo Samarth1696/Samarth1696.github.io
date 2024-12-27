@@ -98,7 +98,7 @@
         const map = (window.map = new maplibregl.Map({
             container: 'map',
             zoom: 13,
-            center: [-122.4194, 37.7749],
+            center: [11.39085, 47.27574],
             pitch: 70,
             style: {
                 version: 8,
@@ -138,9 +138,14 @@
                 ],
                 sky: {}
             },
+            terrain: {
+                source: 'terrainSource',
+                exaggeration: 1
+            },
             maxPitch: 180,
             centerClampedToGround: false
         }));
+        // map.setTerrainCollision(false);
 
         map.keyboard.disable(); // Disable default keyboard controls
         // Add built-in controls
@@ -162,9 +167,9 @@
         // Initialize FlightMotionControl
         const flightControl = new MaplibreGlFlightSimulator.FlightMotionControl({
             initialPosition: {
-                lat: 37.7749,
-                lng: -122.4194,
-                altitude: 1000
+                lat: 47.27574,
+                lng: 11.39085,
+                altitude: 5000
             }
         });
 
@@ -172,6 +177,7 @@
         map.addControl(flightControl);
 
         let animationFrame;
+        let updateInterval;
         let startTime;
         let currentPattern = null;
 
@@ -202,7 +208,7 @@
         // Flight patterns
         function circularPattern(t) {
             const radius = 0.01; // roughly 1km
-            const center = {lat: 37.7749, lng: -122.4194};
+            const center = {lat: 47.27574, lng: 11.39085};
             const angle = t * Math.PI / 10;
 
             return {
@@ -218,7 +224,7 @@
 
         function figureEightPattern(t) {
             const scale = 0.01; // Scale of the pattern in degrees
-            const center = {lat: 37.7749, lng: -122.4194};
+            const center = {lat: 47.27574, lng: 11.39085};
             const omega = Math.PI / 15; // Angular velocity (complete figure 8 every 30 seconds)
             const angle = omega * t;
             const maxVerticalSpeed = 15; // Maximum vertical speed in m/s
@@ -266,16 +272,18 @@
 
         function climbingPattern(t) {
             const radius = 0.008;
-            const center = {lat: 37.7749, lng: -122.4194};
+            const center = {lat: 47.27574, lng: 11.39085};
             const angle = t * Math.PI / 12;
-            const verticalSpeed = 10 * Math.sin(angle); // Oscillating vertical speed
+            const verticalSpeed = -45; // Oscillating vertical speed
 
             return {
-                lat: center.lat + radius * Math.cos(angle),
-                lng: center.lng + radius * Math.sin(angle),
+                lat: center.lat,
+                lng: center.lng,
                 verticalSpeed: verticalSpeed, // Elevation will be calculated from this
                 groundSpeed: 80,
-                flightHeading: (angle * 180 / Math.PI + 90) % 360,
+                flightHeading: 0,
+                pitchAttitude: 75,
+                rollAttitude: 0,
             };
         }
 
@@ -288,32 +296,30 @@
 
             // Update telemetry display
             updateTelemetry(flightControl.getState());
-
-            animationFrame = requestAnimationFrame(updateFlight);
         }
 
         function updateTelemetry(state) {
             if (!state) return;
 
             document.getElementById('position').innerHTML = `
-                Position:<br>
-                Lat: ${state.position.lat.toFixed(4)}°<br>
-                Lng: ${state.position.lng.toFixed(4)}°<br>
-                Alt: ${map.transform.getCameraAltitude().toFixed(0)}m
-            `;
+        Position:<br>
+        Lat: ${state.position.lat.toFixed(4)}°<br>
+        Lng: ${state.position.lng.toFixed(4)}°<br>
+        Alt: ${map.transform.getCameraAltitude().toFixed(0)}m
+    `;
 
             document.getElementById('attitude').innerHTML = `
-                Attitude:<br>
-                Heading: ${state.attitude.heading.toFixed(1)}°<br>
-                Pitch: ${state.attitude.pitch.toFixed(1)}°<br>
-                Roll: ${state.attitude.roll.toFixed(1)}°
-            `;
+        Attitude:<br>
+        Heading: ${state.attitude.heading.toFixed(1)}°<br>
+        Pitch: ${state.attitude.pitch.toFixed(1)}°<br>
+        Roll: ${state.attitude.roll.toFixed(1)}°
+    `;
 
             document.getElementById('velocity').innerHTML = `
-                Velocity:<br>
-                Ground: ${state.velocity.groundSpeed.toFixed(1)} m/s<br>
-                Vertical: ${state.velocity.verticalSpeed.toFixed(1)} m/s
-            `;
+        Velocity:<br>
+        Ground: ${state.velocity.groundSpeed.toFixed(1)} m/s<br>
+        Vertical: ${state.velocity.verticalSpeed.toFixed(1)} m/s
+    `;
         }
 
         // Pattern control functions
@@ -321,33 +327,34 @@
             stopFlight();
             currentPattern = circularPattern;
             startTime = Date.now();
-            updateFlight();
+            updateInterval = setInterval(updateFlight, 50); // Update every 50ms
         }
 
         function startFigureEight() {
             stopFlight();
             currentPattern = figureEightPattern;
             startTime = Date.now();
-            updateFlight();
+            updateInterval = setInterval(updateFlight, 50); // Update every 50ms
         }
 
         function startClimbing() {
             stopFlight();
             currentPattern = climbingPattern;
             startTime = Date.now();
-            updateFlight();
+            updateInterval = setInterval(updateFlight, 50); // Update every 50ms
         }
 
         function stopFlight() {
-            if (animationFrame) {
-                cancelAnimationFrame(animationFrame);
+            flightControl.startPrediction();
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
             }
             currentPattern = null;
         }
 
+        // Initialize
         setCameraMode('COCKPIT');
-
-        // Start with circular pattern
         startCircularFlight();
     </script>
 </body>
