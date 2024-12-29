@@ -84,7 +84,7 @@
             <button onclick="startCircularFlight()">Circular</button>
             <button onclick="startFigureEight()">Figure 8</button>
             <button onclick="startClimbing()">Climbing</button>
-            <button onclick="stopFlight()">Stop</button>
+            <button onclick="predict()">Predict</button>
         </div>
     </div>
 
@@ -170,7 +170,8 @@
                 lat: 47.27574,
                 lng: 11.39085,
                 altitude: 5000
-            }
+            },
+            predict: true
         });
 
         // Add the control to the map
@@ -292,6 +293,7 @@
 
             const t = (Date.now() - startTime) / 1000;
             const state = currentPattern(t);
+            console.log(flightControl._velocity);
             flightControl.updateFlightState(state);
 
             // Update telemetry display
@@ -345,12 +347,16 @@
         }
 
         function stopFlight() {
-            flightControl.startPrediction();
             if (updateInterval) {
                 clearInterval(updateInterval);
                 updateInterval = null;
             }
             currentPattern = null;
+        }
+
+        function predict() {
+            stopFlight();
+            flightControl.startPrediction();
         }
 
         // Initialize
