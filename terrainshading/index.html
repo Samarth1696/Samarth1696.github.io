@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Falken Avionics - Terrain Shading: Increased Situational Awareness</title>
+    <script src="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@5.2.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1;
+            font-family: Arial, sans-serif;
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .color-swatch {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border: 1px solid #000;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="info">
+        <div id="controls">
+            <div>
+                <label for="opacity-slider">Terrain Color Opacity: <span id="opacity-value">0.7</span></label>
+                <input type="range" id="opacity-slider" min="0" max="1" step="0.1" value="0.7">
+            </div>
+            <div>
+                <label for="caution-range-lower">Caution Range:
+                    <span id="caution-range-lower-value">300</span>m to
+                    <span id="caution-range-upper-value">30</span>m below</label>
+                <div>
+                    <input type="range" id="caution-range-lower" min="100" max="1000" step="10" value="300">
+                    <input type="range" id="caution-range-upper" min="10" max="100" step="5" value="30">
+                </div>
+            </div>
+            <div>
+                <div><span class="color-swatch" style="background-color: rgb(0, 128, 0);"></span>Safe (below caution)
+                </div>
+                <div><span class="color-swatch" style="background-color: rgb(255, 255, 0);"></span>Caution</div>
+                <div><span class="color-swatch" style="background-color: rgb(255, 0, 0);"></span>Warning (above caution)
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const config = {
+            opacity: 0.7,
+            colors: {
+                safe: [0, 128, 0],
+                caution: [255, 255, 0],
+                warning: [255, 0, 0]
+            },
+            ranges: {
+                cautionLower: 300,
+                cautionUpper: 30
+            }
+        };
+
+        function rgbToElevation(r, g, b) {
+            return -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
+        }
+
+        function getColorRelativeToCamera(elevation, cameraAltitude, opacity) {
+            const {colors, ranges} = config;
+
+            if (elevation >= cameraAltitude - ranges.cautionUpper) {
+                return [...colors.warning, Math.round(opacity * 255)]; // Red with opacity
+            }
+            else if (elevation >= cameraAltitude - ranges.cautionLower) {
+                return [...colors.caution, Math.round(opacity * 255)]; // Yellow with opacity
+            }
+            else {
+                return [...colors.safe, Math.round(opacity * 255)]; // Green with opacity
+            }
+        }
+
+        maplibregl.addProtocol('terrain_warning', (params) => {
+            return new Promise((resolve, reject) => {
+                // Current camera altitude
+                let currentCameraAltitude = 1000;
+
+                // Store the original URL
+                const originalUrl = params.url.replace('terrain_warning://', '');
+
+                // Function to process the terrain tile
+                const processTile = (cameraAlt) => {
+                    currentCameraAltitude = cameraAlt;
+
+                    const image = new Image();
+                    image.crossOrigin = '';
+
+                    image.onload = async () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = image.width;
+                            canvas.height = image.height;
+
+                            const context = canvas.getContext('2d');
+                            context.drawImage(image, 0, 0);
+                            const imageData = context.getImageData(
+                                0,
+                                0,
+                                canvas.width,
+                                canvas.height,
+                            );
+
+                            for (let i = 0; i < imageData.data.length / 4; i++) {
+                                const r = imageData.data[i * 4];
+                                const g = imageData.data[i * 4 + 1];
+                                const b = imageData.data[i * 4 + 2];
+
+                                const elevation = rgbToElevation(r, g, b);
+
+                                const color = getColorRelativeToCamera(elevation, currentCameraAltitude, config.opacity);
+
+                                imageData.data[i * 4] = color[0];
+                                imageData.data[i * 4 + 1] = color[1];
+                                imageData.data[i * 4 + 2] = color[2];
+                                imageData.data[i * 4 + 3] = color[3];
+                            }
+
+                            context.putImageData(imageData, 0, 0);
+
+                            const blob = await new Promise(resolveBlob => canvas.toBlob(resolveBlob));
+                            const arrayBuffer = await blob.arrayBuffer();
+                            resolve({
+                                data: arrayBuffer
+                            });
+
+                        } catch (error) {
+                            reject(new Error(`Image processing error: ${error.message}`));
+                        }
+                    };
+
+                    image.onerror = (error) => {
+                        reject(new Error(`Image load error: ${error.message}`));
+                    };
+
+                    image.src = originalUrl;
+                };
+
+                // Initially process with default camera altitude
+                processTile(currentCameraAltitude);
+
+                // Expose the process function for later updates
+                if (!window.updateTerrainWarnings) {
+                    window.updateTerrainWarnings = (newCameraAlt, newConfig) => {
+                        let shouldUpdate = false;
+
+                        // Update camera altitude if it changed significantly
+                        if (Math.abs(newCameraAlt - currentCameraAltitude) > 10) {
+                            currentCameraAltitude = newCameraAlt;
+                            shouldUpdate = true;
+                        }
+
+                        // Update config if provided
+                        if (newConfig) {
+                            if (newConfig.opacity !== undefined && newConfig.opacity !== config.opacity) {
+                                config.opacity = newConfig.opacity;
+                                shouldUpdate = true;
+                            }
+
+                            if (newConfig.ranges) {
+                                if (newConfig.ranges.cautionLower !== undefined &&
+                                    newConfig.ranges.cautionLower !== config.ranges.cautionLower) {
+                                    config.ranges.cautionLower = newConfig.ranges.cautionLower;
+                                    shouldUpdate = true;
+                                }
+
+                                if (newConfig.ranges.cautionUpper !== undefined &&
+                                    newConfig.ranges.cautionUpper !== config.ranges.cautionUpper) {
+                                    config.ranges.cautionUpper = newConfig.ranges.cautionUpper;
+                                    shouldUpdate = true;
+                                }
+                            }
+
+                            if (newConfig.colors) {
+                                // Update any colors that changed
+                                for (const key in newConfig.colors) {
+                                    if (JSON.stringify(newConfig.colors[key]) !== JSON.stringify(config.colors[key])) {
+                                        config.colors[key] = newConfig.colors[key];
+                                        shouldUpdate = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Refresh tiles if needed
+                        if (shouldUpdate && map && map.getSource('terrain_warning_source')) {
+                            // Update color swatches in the UI
+                            updateColorSwatches();
+
+                            // Force map to refresh tiles by invalidating the source cache
+                            const tiles = map.getSource('terrain_warning_source').tiles;
+                            const refreshParam = Date.now();
+
+                            const refreshedTiles = tiles.map(tile => {
+                                if (tile.includes('?')) {
+                                    return tile.split('?')[0] + '?refresh=' + refreshParam;
+                                } else {
+                                    return tile + '?refresh=' + refreshParam;
+                                }
+                            });
+
+                            // Trigger source refresh
+                            map.getSource('terrain_warning_source').setTiles(refreshedTiles);
+                        }
+                    };
+                }
+            });
+        });
+
+        function updateColorSwatches() {
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches[0].style.backgroundColor = `rgb(${config.colors.safe.join(',')})`;
+            swatches[1].style.backgroundColor = `rgb(${config.colors.caution.join(',')})`;
+            swatches[2].style.backgroundColor = `rgb(${config.colors.warning.join(',')})`;
+        }
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            zoom: 12,
+            center: [11.39085, 47.27574],
+            pitch: 70,
+            hash: true,
+            style: {
+                version: 8,
+                sources: {
+                    osm: {
+                        type: 'raster',
+                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap Contributors',
+                        maxzoom: 19
+                    },
+                    terrainSource: {
+                        type: 'raster-dem',
+                        url: 'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=LGtlOxBQOVlsOfB7nxKn',
+                        tileSize: 256
+                    },
+                    terrain_warning_source: {
+                        type: 'raster',
+                        tiles: [
+                            'terrain_warning://https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=LGtlOxBQOVlsOfB7nxKn',
+                        ],
+                        maxzoom: 12,
+                    },
+                },
+                layers: [
+                    {
+                        id: 'osm',
+                        type: 'raster',
+                        source: 'osm'
+                    },
+                    {
+                        id: 'terrain_warning_layer',
+                        type: 'raster',
+                        source: 'terrain_warning_source',
+                    }
+                ],
+                terrain: {
+                    source: 'terrainSource',
+                    exaggeration: 1
+                },
+                sky: {}
+            },
+            maxZoom: 18,
+            maxPitch: 85
+        });
+
+        map.addControl(new maplibregl.NavigationControl({
+            visualizePitch: true,
+            showZoom: true,
+            showCompass: true
+        }));
+
+        map.addControl(
+            new maplibregl.TerrainControl({
+                source: 'terrainSource',
+                exaggeration: 1
+            })
+        );
+
+        // Add event listener for opacity slider
+        document.getElementById('opacity-slider').addEventListener('input', function (e) {
+            const newOpacity = parseFloat(e.target.value);
+            document.getElementById('opacity-value').textContent = newOpacity.toFixed(1);
+
+            // Update terrain colors with new opacity
+            if (window.updateTerrainWarnings) {
+                const cameraAltitude = Math.round(map.transform.getCameraAltitude());
+                window.updateTerrainWarnings(cameraAltitude, {opacity: newOpacity});
+            }
+        });
+
+        // Add event listeners for caution range sliders
+        document.getElementById('caution-range-lower').addEventListener('input', function (e) {
+            const lowerValue = parseInt(e.target.value);
+            document.getElementById('caution-range-lower-value').textContent = lowerValue;
+
+            if (window.updateTerrainWarnings) {
+                const cameraAltitude = Math.round(map.transform.getCameraAltitude());
+                window.updateTerrainWarnings(cameraAltitude, {
+                    ranges: {cautionLower: lowerValue}
+                });
+            }
+        });
+
+        document.getElementById('caution-range-upper').addEventListener('input', function (e) {
+            const upperValue = parseInt(e.target.value);
+            document.getElementById('caution-range-upper-value').textContent = upperValue;
+
+            if (window.updateTerrainWarnings) {
+                const cameraAltitude = Math.round(map.transform.getCameraAltitude());
+                window.updateTerrainWarnings(cameraAltitude, {
+                    ranges: {cautionUpper: upperValue}
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
