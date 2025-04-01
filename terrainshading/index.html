@@ -112,7 +112,7 @@
         maplibregl.addProtocol('terrain_warning', (params) => {
             return new Promise((resolve, reject) => {
                 // Current camera altitude
-                let currentCameraAltitude = 1000;
+                let currentCameraAltitude = Math.round(map.transform.getCameraAltitude());
 
                 // Store the original URL
                 const originalUrl = params.url.replace('terrain_warning://', '');
@@ -231,9 +231,10 @@
 
                             const refreshedTiles = tiles.map(tile => {
                                 if (tile.includes('?')) {
-                                    return tile.split('?')[0] + '?refresh=' + refreshParam;
+                                    const baseUrl = tile.split('?')[0];
+                                    return `${baseUrl}?key=LGtlOxBQOVlsOfB7nxKn&refresh=${refreshParam}`;
                                 } else {
-                                    return tile + '?refresh=' + refreshParam;
+                                    return `${tile}?key=LGtlOxBQOVlsOfB7nxKn&refresh=${refreshParam}`;
                                 }
                             });
 
@@ -300,7 +301,7 @@
                 sky: {}
             },
             maxZoom: 18,
-            maxPitch: 85
+            maxPitch: 180
         });
 
         map.addControl(new maplibregl.NavigationControl({
@@ -315,6 +316,27 @@
                 exaggeration: 1
             })
         );
+
+        map.on('move', function () {
+            // Debounce the updates to avoid excessive refreshes
+            if (this.moveTimeout) clearTimeout(this.moveTimeout);
+
+            this.moveTimeout = setTimeout(function () {
+                const cameraAltitude = Math.round(map.transform.getCameraAltitude());
+
+                // Update terrain colors based on new camera altitude
+                if (window.updateTerrainWarnings) {
+                    window.updateTerrainWarnings(cameraAltitude);
+                }
+            }, 100); // 100ms debounce
+        });
+
+        map.on('load', function () {
+            const cameraAltitude = Math.round(map.transform.getCameraAltitude());
+            if (window.updateTerrainWarnings) {
+                window.updateTerrainWarnings(cameraAltitude);
+            }
+        });
 
         // Add event listener for opacity slider
         document.getElementById('opacity-slider').addEventListener('input', function (e) {
